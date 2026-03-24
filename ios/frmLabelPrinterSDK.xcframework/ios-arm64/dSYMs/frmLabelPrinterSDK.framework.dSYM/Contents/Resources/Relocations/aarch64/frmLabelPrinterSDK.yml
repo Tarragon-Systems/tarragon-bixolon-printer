@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/taekyeong/Library/Developer/Xcode/DerivedData/Build/Products/iphoneos.xcarchive/Products/Library/Frameworks/frmLabelPrinterSDK.framework/frmLabelPrinterSDK'
+relocations:     []
+...

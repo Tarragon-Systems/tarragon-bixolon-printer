@@ -1,0 +1,4 @@
+framework module frmLabelPrinterSDK {
+    umbrella header "frmLabelPrinterSDK.h"
+    export *
+}
