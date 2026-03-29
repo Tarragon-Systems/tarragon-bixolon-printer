@@ -1,9 +1,15 @@
 package com.tarragon.bixolonprinter;
 
+import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.bixolon.labelprinter.BixolonLabelPrinter;
 import com.facebook.react.bridge.Arguments;
@@ -88,6 +94,29 @@ public class BixolonPrinterModule extends ReactContextBaseJavaModule {
         }
     };
 
+    private boolean hasBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return ContextCompat.checkSelfPermission(getReactApplicationContext(),
+                    Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(getReactApplicationContext(),
+                    Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private void requestBluetoothPermissions(Promise promise) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && getCurrentActivity() != null) {
+            ActivityCompat.requestPermissions(getCurrentActivity(),
+                new String[]{
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+                }, 1);
+            promise.reject("PERMISSIONS_REQUESTED", "Bluetooth permissions requested. Please try again.");
+        } else {
+            promise.reject("NO_ACTIVITY", "Cannot request permissions without an active activity.");
+        }
+    }
+
     @ReactMethod
     public void open(Promise promise) {
         try {
@@ -106,6 +135,10 @@ public class BixolonPrinterModule extends ReactContextBaseJavaModule {
             promise.reject("NOT_OPEN", "SDK not initialized. Call open() first.");
             return;
         }
+        if (!hasBluetoothPermissions()) {
+            requestBluetoothPermissions(promise);
+            return;
+        }
         pairedDevicesPromise = promise;
         printer.findBluetoothPrinters();
     }
@@ -114,6 +147,10 @@ public class BixolonPrinterModule extends ReactContextBaseJavaModule {
     public void connectWithSerialNumber(String address, Promise promise) {
         if (printer == null) {
             promise.reject("NOT_OPEN", "SDK not initialized. Call open() first.");
+            return;
+        }
+        if (!hasBluetoothPermissions()) {
+            requestBluetoothPermissions(promise);
             return;
         }
         if (isConnected) {
