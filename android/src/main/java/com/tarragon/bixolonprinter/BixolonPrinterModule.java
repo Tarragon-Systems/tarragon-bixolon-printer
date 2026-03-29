@@ -189,7 +189,7 @@ public class BixolonPrinterModule extends ReactContextBaseJavaModule {
         try {
             printer.draw1dBarcode(data, xPosition, yPosition,
                     barcodeType, widthNarrow, widthWide, height, hri,
-                    BixolonLabelPrinter.ROTATION_NONE);
+                    0, BixolonLabelPrinter.ROTATION_NONE);
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("DRAW_BARCODE_FAILED", "Failed to draw barcode", e);
