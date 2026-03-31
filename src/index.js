@@ -50,14 +50,22 @@ export async function printLabel(text) {
     return false;
   }
   try {
-    await BixolonPrinter.drawTextDeviceFont(
-      text,   // text
-      50,     // xPosition
-      50,     // yPosition
-      '2',    // fontSize (10pt)
-      1,      // fontWidth
-      1,      // fontHeight
-    );
+    const lines = text.split('\n');
+    const lineHeight = 35;
+    const startY = 20;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim()) {
+        await BixolonPrinter.drawTextDeviceFont(
+          lines[i],
+          20,                      // xPosition
+          startY + i * lineHeight, // yPosition
+          i === 0 ? '2' : '1',    // fontSize: first line larger
+          1,                       // fontWidth
+          1,                       // fontHeight
+        );
+      }
+    }
     await BixolonPrinter.doPrint(1);
     return true;
   } catch (error) {
