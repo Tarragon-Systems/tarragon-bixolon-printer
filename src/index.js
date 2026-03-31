@@ -50,19 +50,40 @@ export async function printLabel(text) {
     return false;
   }
   try {
-    const lines = text.split('\n');
-    const lineHeight = 35;
-    const startY = 20;
+    const maxCharsPerLine = 25;
+    const lineHeight = 30;
+    const startY = 15;
 
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim()) {
+    // Split by newlines, then wrap long lines
+    const rawLines = text.split('\n');
+    const wrappedLines = [];
+    for (const line of rawLines) {
+      if (line.length <= maxCharsPerLine) {
+        wrappedLines.push(line);
+      } else {
+        const words = line.split(' ');
+        let current = '';
+        for (const word of words) {
+          if (current && (current + ' ' + word).length > maxCharsPerLine) {
+            wrappedLines.push(current);
+            current = word;
+          } else {
+            current = current ? current + ' ' + word : word;
+          }
+        }
+        if (current) wrappedLines.push(current);
+      }
+    }
+
+    for (let i = 0; i < wrappedLines.length; i++) {
+      if (wrappedLines[i].trim()) {
         await BixolonPrinter.drawTextDeviceFont(
-          lines[i],
-          20,                      // xPosition
-          startY + i * lineHeight, // yPosition
-          i === 0 ? '2' : '1',    // fontSize: first line larger
-          1,                       // fontWidth
-          1,                       // fontHeight
+          wrappedLines[i],
+          20,                        // xPosition
+          startY + i * lineHeight,   // yPosition
+          i === 0 ? '2' : '1',      // fontSize: first line larger
+          1,                         // fontWidth
+          1,                         // fontHeight
         );
       }
     }
