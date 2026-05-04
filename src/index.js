@@ -53,8 +53,8 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
     const xMargin = 20;
     const startY = 15;
 
-    const bigCfg = { fontSize: '3', w: 1, h: 1, charLimit: 18, lineHeight: 35 };
-    const smallCfg = { fontSize: '1', w: 1, h: 1, charLimit: 25, lineHeight: 30 };
+    const bigCfg = { fontSize: '3', w: 1, h: 1, charLimit: 21, lineHeight: 35 };
+    const smallCfg = { fontSize: '1', w: 1, h: 1, charLimit: 22, lineHeight: 30 };
 
     const wrap = (line, limit) => {
       if (line.length <= limit) return [line];
@@ -73,38 +73,42 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
       return out;
     };
 
-    const segments = [];
-    if (title) segments.push({ line: title, cfg: bigCfg });
-    if (useBy) segments.push({ line: useBy, cfg: bigCfg });
-    for (const line of body) segments.push({ line, cfg: smallCfg });
-
-    let y = startY;
-    for (const { line, cfg } of segments) {
+    const drawSegment = async (line, cfg, yStart) => {
       const wrapped = wrap(String(line), cfg.charLimit);
+      let cursor = yStart;
       for (const w of wrapped) {
         if (w.trim()) {
           await BixolonPrinter.drawTextDeviceFont(
             w,
             xMargin,
-            y,
+            cursor,
             cfg.fontSize,
             cfg.w,
             cfg.h,
           );
         }
-        y += cfg.lineHeight;
+        cursor += cfg.lineHeight;
       }
-    }
+      return cursor;
+    };
+
+    let y = startY;
+    if (title) y = await drawSegment(title, bigCfg, y);
+    if (useBy) y = await drawSegment(useBy, bigCfg, y);
+
+    const bodyStartY = y;
+    for (const line of body) y = await drawSegment(line, smallCfg, y);
 
     if (callout) {
-      // FONT_SIZE_30 with 2x multiplier — bottom-right corner callout
+      // Bottom-right callout, positioned beside (not below) body text so it
+      // stays inside the printable area on short labels.
       await BixolonPrinter.drawTextDeviceFont(
         String(callout).toUpperCase(),
-        160,
-        y + 10,
+        240,
+        bodyStartY,
         '6',
-        2,
-        2,
+        1,
+        1,
       );
     }
 
