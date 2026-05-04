@@ -44,49 +44,70 @@ export async function connectToPrinter(serialNumber) {
   }
 }
 
-export async function printLabel(text) {
+export async function printLabel({ title, useBy, body = [], callout } = {}) {
   if (!connected) {
     console.warn('PrinterService: No printer connected');
     return false;
   }
   try {
-    const maxCharsPerLine = 25;
-    const lineHeight = 30;
+    const xMargin = 20;
     const startY = 15;
 
-    // Split by newlines, then wrap long lines
-    const rawLines = text.split('\n');
-    const wrappedLines = [];
-    for (const line of rawLines) {
-      if (line.length <= maxCharsPerLine) {
-        wrappedLines.push(line);
-      } else {
-        const words = line.split(' ');
-        let current = '';
-        for (const word of words) {
-          if (current && (current + ' ' + word).length > maxCharsPerLine) {
-            wrappedLines.push(current);
-            current = word;
-          } else {
-            current = current ? current + ' ' + word : word;
-          }
+    const bigCfg = { fontSize: '3', w: 1, h: 1, charLimit: 18, lineHeight: 35 };
+    const smallCfg = { fontSize: '1', w: 1, h: 1, charLimit: 25, lineHeight: 30 };
+
+    const wrap = (line, limit) => {
+      if (line.length <= limit) return [line];
+      const words = line.split(' ');
+      const out = [];
+      let cur = '';
+      for (const w of words) {
+        if (cur && (cur + ' ' + w).length > limit) {
+          out.push(cur);
+          cur = w;
+        } else {
+          cur = cur ? cur + ' ' + w : w;
         }
-        if (current) wrappedLines.push(current);
+      }
+      if (cur) out.push(cur);
+      return out;
+    };
+
+    const segments = [];
+    if (title) segments.push({ line: title, cfg: bigCfg });
+    if (useBy) segments.push({ line: useBy, cfg: bigCfg });
+    for (const line of body) segments.push({ line, cfg: smallCfg });
+
+    let y = startY;
+    for (const { line, cfg } of segments) {
+      const wrapped = wrap(String(line), cfg.charLimit);
+      for (const w of wrapped) {
+        if (w.trim()) {
+          await BixolonPrinter.drawTextDeviceFont(
+            w,
+            xMargin,
+            y,
+            cfg.fontSize,
+            cfg.w,
+            cfg.h,
+          );
+        }
+        y += cfg.lineHeight;
       }
     }
 
-    for (let i = 0; i < wrappedLines.length; i++) {
-      if (wrappedLines[i].trim()) {
-        await BixolonPrinter.drawTextDeviceFont(
-          wrappedLines[i],
-          20,                        // xPosition
-          startY + i * lineHeight,   // yPosition
-          i === 0 ? '2' : '1',      // fontSize: first line larger
-          1,                         // fontWidth
-          1,                         // fontHeight
-        );
-      }
+    if (callout) {
+      // FONT_SIZE_30 with 2x multiplier — bottom-right corner callout
+      await BixolonPrinter.drawTextDeviceFont(
+        String(callout).toUpperCase(),
+        160,
+        y + 10,
+        '6',
+        2,
+        2,
+      );
     }
+
     await BixolonPrinter.doPrint(1);
     return true;
   } catch (error) {
