@@ -54,7 +54,7 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
     const startY = 15;
 
     const bigCfg = { fontSize: '3', w: 1, h: 1, charLimit: 21, lineHeight: 35 };
-    const smallCfg = { fontSize: '1', w: 1, h: 1, charLimit: 25, lineHeight: 30 };
+    const smallCfg = { fontSize: '1', w: 1, h: 1, charLimit: 28, lineHeight: 30 };
 
     const wrap = (line, limit) => {
       if (line.length <= limit) return [line];
@@ -98,10 +98,13 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
     for (const line of body) y = await drawSegment(line, smallCfg, y);
 
     if (callout) {
+      // Anchor near the bottom of the label; if body extends past the
+      // anchor, push the callout down to avoid horizontal overlap.
+      const calloutY = Math.max(195, y + 5);
       await BixolonPrinter.drawTextDeviceFont(
         String(callout).toUpperCase(),
         180,
-        y + 5,
+        calloutY,
         '6',
         1,
         1,
