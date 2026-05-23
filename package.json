@@ -1,6 +1,6 @@
 {
   "name": "@tarragon/bixolon-printer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "BIXOLON label printer integration for React Native (Expo managed workflow)",
   "main": "src/index.js",
   "repository": {

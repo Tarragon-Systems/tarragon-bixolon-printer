@@ -98,9 +98,12 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
     for (const line of body) y = await drawSegment(line, smallCfg, y);
 
     if (callout) {
-      // Anchor near the bottom of the label; if body extends past the
-      // anchor, push the callout down to avoid horizontal overlap.
-      const calloutY = Math.max(195, y + 5);
+      // Anchor in the lower-right area of the label; if body extends past
+      // the anchor, push the callout down to avoid horizontal overlap.
+      // Anchor was 195 but the bottom of FONT_SIZE_30 was clipping at the
+      // label edge on standard stock — 170 leaves margin for the full
+      // letter strokes (descenders and bottom serifs).
+      const calloutY = Math.max(170, y + 5);
       await BixolonPrinter.drawTextDeviceFont(
         String(callout).toUpperCase(),
         180,
