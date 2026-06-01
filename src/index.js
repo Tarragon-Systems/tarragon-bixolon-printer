@@ -122,6 +122,100 @@ export async function printLabel({ title, useBy, body = [], callout } = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Low-level label primitives
+//
+// printLabel() above is a fixed renderer for the legacy 1.25"x2.25" stock.
+// These primitives instead let the client own the layout: set the physical
+// media size, draw each element at explicit dot coordinates, then print. That
+// way a consumer can target any label stock (e.g. 1"x2") without the geometry
+// being hardcoded here. All positions/sizes are in printer dots; Bixolon label
+// printers are typically 203 dpi (1 inch = 203 dots).
+// ---------------------------------------------------------------------------
+
+const DEFAULT_DPI = 203;
+
+/**
+ * Tell the printer the physical media size. `heightIn` is the feed-direction
+ * length of one label (the gap-to-gap distance) and `gapIn` is the liner gap
+ * between labels. Call this before drawing so content isn't clipped to a stale
+ * media length. `widthIn` is fixed by the print head, so it's only echoed back
+ * (as dots) for the caller's layout math, not sent to the printer.
+ *
+ * @returns {Promise<false|{widthDots:number,heightDots:number,gapDots:number,dpi:number}>}
+ */
+export async function setLabelSize({ widthIn, heightIn, dpi = DEFAULT_DPI, gapIn = 0.12 } = {}) {
+  if (!connected) {
+    console.warn('PrinterService: No printer connected');
+    return false;
+  }
+  const heightDots = Math.round((heightIn || 0) * dpi);
+  const gapDots = Math.round((gapIn || 0) * dpi);
+  try {
+    await BixolonPrinter.setLength(heightDots, gapDots);
+    return { widthDots: Math.round((widthIn || 0) * dpi), heightDots, gapDots, dpi };
+  } catch (error) {
+    console.warn('PrinterService: Failed to set label size', error);
+    return false;
+  }
+}
+
+/**
+ * Draw a single line of device-font text at the given dot coordinates. `font`
+ * is the Bixolon device-font selection ('1' ~ FONT_SIZE_8, '3' ~ FONT_SIZE_12,
+ * '6' ~ FONT_SIZE_30); `w`/`h` are integer scale factors.
+ */
+export async function drawText(text, x, y, font = '2', w = 1, h = 1) {
+  if (!connected) {
+    console.warn('PrinterService: No printer connected');
+    return false;
+  }
+  try {
+    await BixolonPrinter.drawTextDeviceFont(String(text), x, y, String(font), w, h);
+    return true;
+  } catch (error) {
+    console.warn('PrinterService: Failed to draw text', error);
+    return false;
+  }
+}
+
+/** Flush the drawing buffer to the printer. */
+export async function print(copies = 1) {
+  if (!connected) {
+    console.warn('PrinterService: No printer connected');
+    return false;
+  }
+  try {
+    await BixolonPrinter.doPrint(copies);
+    return true;
+  } catch (error) {
+    console.warn('PrinterService: Failed to print', error);
+    return false;
+  }
+}
+
+/**
+ * Greedy word-wrap a line to a character limit. Returns an array of lines so
+ * the caller can advance its own y cursor per line.
+ */
+export function wrapText(line, limit) {
+  const str = String(line);
+  if (!limit || str.length <= limit) return [str];
+  const words = str.split(' ');
+  const out = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur && (cur + ' ' + w).length > limit) {
+      out.push(cur);
+      cur = w;
+    } else {
+      cur = cur ? cur + ' ' + w : w;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
 export async function disconnect() {
   try {
     await BixolonPrinter.disconnect();
